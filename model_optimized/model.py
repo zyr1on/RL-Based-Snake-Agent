@@ -90,7 +90,7 @@ class DQNAgent:
         nn.utils.clip_grad_norm_(self.policy.parameters(), max_norm=10.0)
         self.opt.step()
 
-        if self.step_n % self.tgt_upd == 0:
+        if self.step_n % self.tgt_upd == 0 and self.step_n > 0:
             self.target.load_state_dict(self.policy.state_dict())
 
     def save(self, path="snake_dqn.pt"):
