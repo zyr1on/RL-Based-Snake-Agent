@@ -28,8 +28,7 @@ class ReplayBuffer:
     def sample(self, batch_size):
         batch = random.sample(self.buf, batch_size)
         s, a, r, ns, d = zip(*batch)
-        # np.stack ile tek seferde, sonra GPU'ya gönder
-        to_t  = lambda x: torch.from_numpy(np.stack(x)).float().to(DEVICE)
+        to_t = lambda x: torch.from_numpy(np.stack(x)).float().to(DEVICE)
         return (
             to_t(s),
             torch.tensor(a, dtype=torch.long,    device=DEVICE),
@@ -46,33 +45,32 @@ class DQNAgent:
     def __init__(self, lr=1e-3, gamma=0.95,
                  eps_start=1.0, eps_min=0.01, eps_decay=0.995,
                  batch=128, target_update=200):
-        self.policy = QNet().to(DEVICE)   #  GPU
-        self.target = QNet().to(DEVICE)   #  GPU
+        self.policy = QNet().to(DEVICE)
+        self.target = QNet().to(DEVICE)
         self.target.load_state_dict(self.policy.state_dict())
-        self.target.eval()               
+        self.target.eval()
 
-        self.opt     = optim.Adam(self.policy.parameters(), lr=lr)
-        self.buf     = ReplayBuffer()
-        self.gamma   = gamma
-        self.eps     = eps_start
-        self.eps_min = eps_min
-        self.eps_dec = eps_decay
-        self.batch   = batch
-        self.tgt_upd = target_update
-        self.step_n  = 0
-        self._loss_fn = nn.SmoothL1Loss()  # huber loss mseden iyi
+        self.opt      = optim.Adam(self.policy.parameters(), lr=lr)
+        self.buf      = ReplayBuffer()
+        self.gamma    = gamma
+        self.eps      = eps_start
+        self.eps_min  = eps_min
+        self.eps_dec  = eps_decay
+        self.batch    = batch
+        self.tgt_upd  = target_update
+        self.step_n   = 0
+        self._loss_fn = nn.SmoothL1Loss()
 
     def act(self, obs, greedy=False):
         if not greedy and random.random() < self.eps:
             return random.randint(0, 2)
         with torch.no_grad():
-            t = torch.tensor(obs, dtype=torch.float32,
-                             device=DEVICE).unsqueeze(0)
+            t = torch.tensor(obs, dtype=torch.float32, device=DEVICE).unsqueeze(0)
             return self.policy(t).argmax().item()
 
     def store(self, s, a, r, ns, done):
         self.buf.push(s, a, r, ns, float(done))
-        # epsilon burada azalıyor
+        self.step_n += 1                                      # ✅ buraya taşındı
         self.eps = max(self.eps_min, self.eps * self.eps_dec)
 
     def learn(self):
@@ -86,14 +84,12 @@ class DQNAgent:
             q_next = self.target(ns).max(1)[0]
             q_tgt  = r + self.gamma * q_next * (1 - done)
 
-        loss = self._loss_fn(q_cur, q_tgt)   # önceden yaratılmış loss
+        loss = self._loss_fn(q_cur, q_tgt)
         self.opt.zero_grad()
         loss.backward()
-        # gradyan patlamasına 
         nn.utils.clip_grad_norm_(self.policy.parameters(), max_norm=10.0)
         self.opt.step()
 
-        self.step_n += 1
         if self.step_n % self.tgt_upd == 0:
             self.target.load_state_dict(self.policy.state_dict())
 
@@ -101,6 +97,5 @@ class DQNAgent:
         torch.save(self.policy.state_dict(), path)
 
     def load(self, path="snake_dqn.pt"):
-        self.policy.load_state_dict(
-            torch.load(path, map_location=DEVICE))
+        self.policy.load_state_dict(torch.load(path, map_location=DEVICE))
         self.target.load_state_dict(self.policy.state_dict())
