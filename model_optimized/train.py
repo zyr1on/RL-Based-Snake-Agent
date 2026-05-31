@@ -5,13 +5,12 @@ python train.py --render     # eğitimi izle (yavaş)
 """
 import argparse
 from snake_game import SnakeEnv
-from model import DQNAgent
+from model import DQNAgent, DEVICE
 
 def train(episodes=2000, render=False, save_path="snake_dqn.pt"):
     env   = SnakeEnv(render_mode=render)
     agent = DQNAgent()
     best  = 0
-    from model import DEVICE
     print(f"Cihaz: {DEVICE}")
     
     for ep in range(1, episodes + 1):
