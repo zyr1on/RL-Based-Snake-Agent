@@ -16,6 +16,7 @@ def play(path="snake_dqn.pt", games=5):
     agent = DQNAgent()
     agent.load(path)
     agent.policy.eval()   # ✅ inference modu
+    agent.target.eval()
     agent.eps = 0.0       # ✅ kesinlikle greedy
 
     scores = []
