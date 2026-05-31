@@ -21,9 +21,9 @@ def train(episodes=2000, render=False, save_path="snake_dqn.pt"):
             if render: env.render()
             action        = agent.act(obs)
             nobs, r, done = env.step(action)
-            agent.store(obs, action, r, nobs, done)
+            agent.store(obs, action, r, nobs, done)  # step_n burada artıyor
 
-            if agent.step_n % 4 == 0:   # her 4 adımda bir öğren
+            if agent.step_n % 4 == 0:               # ✅ artık doğru çalışıyor
                 agent.learn()
 
             obs      = nobs
@@ -32,7 +32,7 @@ def train(episodes=2000, render=False, save_path="snake_dqn.pt"):
         if env.score > best:
             best = env.score
 
-        if ep % 100 == 0 and best > 0:  # 100 ep'de bir kaydet
+        if ep % 100 == 0 and best > 0:
             agent.save(save_path)
             print(f"[{ep:5d}/{episodes}]  score={env.score:3d}  "
                   f"eps={agent.eps:.3f}  reward={total_r:7.1f}  best={best}  → kaydedildi")
@@ -40,7 +40,7 @@ def train(episodes=2000, render=False, save_path="snake_dqn.pt"):
             print(f"[{ep:5d}/{episodes}]  score={env.score:3d}  "
                   f"eps={agent.eps:.3f}  reward={total_r:7.1f}  best={best}")
 
-    agent.save(save_path)               # eğitim sonunda mutlaka kaydet
+    agent.save(save_path)
     env.close()
     print(f"\nEğitim tamamlandı. En iyi skor: {best}  →  {save_path}")
 
