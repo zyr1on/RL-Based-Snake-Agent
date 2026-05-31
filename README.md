@@ -15,5 +15,5 @@ Collabratos: <br>
 ## Multi Agent Fikirleri
 <li> Prosedürel harita da olan agent </li>
 <li> av-avcı ilişkisi olan agent </li>
-<li> yarışan agentlar </li>
+<li> aynı veya farklı harita da yarışan agentlar </li>
 
