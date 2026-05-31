@@ -11,7 +11,9 @@ def train(episodes=2000, render=False, save_path="snake_dqn.pt"):
     env   = SnakeEnv(render_mode=render)
     agent = DQNAgent()
     best  = 0
-
+    from model import DEVICE
+    print(f"Cihaz: {DEVICE}")
+    
     for ep in range(1, episodes + 1):
         obs  = env.reset()
         done = False
