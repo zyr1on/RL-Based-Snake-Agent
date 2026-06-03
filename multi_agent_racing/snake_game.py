@@ -7,7 +7,7 @@ HEIGHT_CELLS = 14
 CELL = 30
 WIDTH_PX = WIDTH_CELLS * CELL
 HEIGHT_PX = HEIGHT_CELLS * CELL
-FPS = 30
+FPS = 60
 
 # Ajan renkleri: (Body Outer, Body Inner, Head Outer, Head Inner)
 AGENT_COLORS = [
@@ -15,6 +15,13 @@ AGENT_COLORS = [
     ((128, 0, 128), (180, 50, 180), (75, 0, 130), (220, 100, 220)),  # Mor
     ((255, 140, 0), (255, 180, 50), (200, 100, 0), (255, 220, 100)), # Turuncu
     ((0, 200, 200), (50, 255, 255), (0, 120, 120), (150, 255, 255))  # Cyan
+]
+
+AGENT_LABELS = [
+    "Fast Learner",
+    "Slow Learner",
+    "Greedy",
+    "Standard"
 ]
 
 class SnakeEnv:
@@ -36,6 +43,8 @@ class SnakeEnv:
         self.dir_i = 1
         self.score = 0
         self.steps = 0
+        self.idle_steps = 0
+        self.max_idle_steps = 150
         self.max_steps = WIDTH_CELLS * HEIGHT_CELLS * 2
         self.done = False
         self._place_food()
@@ -53,6 +62,7 @@ class SnakeEnv:
             return self._obs(), 0.0, True
             
         self.steps += 1
+        self.idle_steps += 1
         self.dir_i = (self.dir_i + (1 if action==1 else -1 if action==2 else 0)) % 4
         dx, dy = self.DIRS[self.dir_i]
         hx, hy = self.snake[0]
@@ -69,13 +79,14 @@ class SnakeEnv:
         if head == self.food:
             self.score += 1
             reward = 10.0
+            self.idle_steps = 0
             self._place_food()
         else:
             tail = self.snake.pop()
             self.snake_set.discard(tail)
             reward = -0.01
 
-        if self.steps >= self.max_steps:
+        if self.steps >= self.max_steps or self.idle_steps >= self.max_idle_steps:
             self.done = True
             
         return self._obs(), reward, self.done
@@ -99,7 +110,7 @@ class SnakeEnv:
             float(fy<hy),  float(fy>hy),
         ], dtype=np.float32)
 
-    def draw(self, surface, is_winner=False, text_font=None):
+    def draw(self, surface, is_winner=False, is_tie=False, text_font=None):
         # Checkerboard yeşil zemin
         color1 = (170, 215, 81) # LIGHT_GREEN
         color2 = (162, 209, 73) # DARK_GREEN
@@ -124,13 +135,20 @@ class SnakeEnv:
             pygame.draw.rect(surface, c_out, (x*CELL, y*CELL, CELL, CELL))
             pygame.draw.rect(surface, c_in, (x*CELL + 4, y*CELL + 4, CELL - 8, CELL - 8))
                 
-        # Skor
+        # Skor (Sol üst)
         if text_font:
             txt = text_font.render(f"Skor: {self.score}", True, (0, 0, 0)) # Siyah yazı
             surface.blit(txt, (6, 4))
+            
+        # Strateji (Sağ üst)
+        if text_font:
+            strategy = AGENT_LABELS[self.agent_idx % 4]
+            strat_txt = text_font.render(strategy, True, (0, 0, 0))
+            x_pos = WIDTH_PX - strat_txt.get_width() - 8
+            surface.blit(strat_txt, (x_pos, 4))
 
         # Eğer ölmüşse karart
-        if self.done and not is_winner:
+        if self.done and not is_winner and not is_tie:
             s = pygame.Surface((WIDTH_PX, HEIGHT_PX), pygame.SRCALPHA)
             s.fill((0, 0, 0, 180)) # Yarı saydam siyah
             surface.blit(s, (0,0))
@@ -142,10 +160,17 @@ class SnakeEnv:
             # Gölge / arkaplan
             pygame.draw.rect(surface, (0,0,0), win_rect.inflate(20, 20))
             surface.blit(win_txt, win_rect)
+        # Eğer berabere ise
+        elif is_tie and text_font:
+            tie_txt = text_font.render("BERABERE!", True, (200, 200, 200))
+            tie_rect = tie_txt.get_rect(center=(WIDTH_PX//2, HEIGHT_PX//2))
+            pygame.draw.rect(surface, (0,0,0), tie_rect.inflate(20, 20))
+            surface.blit(tie_txt, tie_rect)
 
 class MultiSnakeEnv:
-    def __init__(self, render_mode=False):
+    def __init__(self, render_mode=False, fps=120):
         self.render_mode = render_mode
+        self.fps = fps
         self.envs = [SnakeEnv(i) for i in range(4)]
         self.screen = None
         self.clock = None
@@ -187,16 +212,22 @@ class MultiSnakeEnv:
                 
         self.screen.fill((50,50,50)) # Arka plan çerçevesi
         
-        # Hayatta kalan ajan sayısını bul (yarışma modu için)
+        # Yarışma modunda kazananı belirleme (Sadece herkes öldüğünde)
         active_agents = [i for i, env in enumerate(self.envs) if not env.done]
-        winner_idx = active_agents[0] if is_race and len(active_agents) == 1 else -1
-        if is_race and len(active_agents) == 0: # Hepsi öldüyse, en son öleni winner yapamayız gerçi, neyse.
-            pass
+        winner_idxs = []
+        is_tie = False
+        if is_race and len(active_agents) == 0:
+            scores = [env.score for env in self.envs]
+            max_s = max(scores)
+            winner_idxs = [i for i, s in enumerate(scores) if s == max_s]
+            if len(winner_idxs) > 1:
+                is_tie = True
 
         for i, env in enumerate(self.envs):
             surf = self.surfaces[i]
-            is_winner = (i == winner_idx) and is_race
-            env.draw(surf, is_winner=is_winner, text_font=self.font)
+            env_is_winner = (i in winner_idxs) and is_race and not is_tie
+            env_is_tie = (i in winner_idxs) and is_race and is_tie
+            env.draw(surf, is_winner=env_is_winner, is_tie=env_is_tie, text_font=self.font)
             
             # Sınır çizgisi
             pygame.draw.rect(surf, (200,200,200), surf.get_rect(), 2)
@@ -205,7 +236,7 @@ class MultiSnakeEnv:
             self.screen.blit(surf, self.positions[i])
             
         pygame.display.flip()
-        self.clock.tick(FPS)
+        self.clock.tick(self.fps)
         
     def close(self):
         if self.render_mode:

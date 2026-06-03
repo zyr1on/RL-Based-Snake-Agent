@@ -3,8 +3,8 @@ import json
 from snake_game import MultiSnakeEnv
 from model import DQNAgent
 
-def train(episodes=2000, render=False):
-    env = MultiSnakeEnv(render_mode=render)
+def train(episodes=2000, render=False, fps=120):
+    env = MultiSnakeEnv(render_mode=render, fps=fps)
     
     # 4 Farklı Ajan
     agents = [
@@ -82,5 +82,6 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--eps", type=int, default=1000)
     p.add_argument("--render", action="store_true")
+    p.add_argument("--fps", type=int, default=120)
     args = p.parse_args()
-    train(episodes=args.eps, render=args.render)
+    train(episodes=args.eps, render=args.render, fps=args.fps)
