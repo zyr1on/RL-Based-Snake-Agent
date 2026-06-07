@@ -16,8 +16,6 @@ Collabratos: <br>
 
 
 ## Multi Agent Fikirleri
-<li> Prosedürel harita da olan agent </li>
-<li> av-avcı ilişkisi olan agent </li>
 <li> <s>aynı veya farklı harita da yarışan agentlar</s> (Eklendi: `multi_agent_racing` modülü) </li>
 
 # iyileştirilebilir
@@ -29,7 +27,6 @@ Collabratos: <br>
 6. Reward shaping — yiyeceğe yaklaşınca küçük pozitif, uzaklaşınca küçük negatif ödül ekle seyrek ödülden iyidir
 7. Daha uzun eğitim + learning rate scheduler — 2000 episode yetmeyebilir. optim.lr_scheduler ile lr'yi zamanla düşürmek
 8. Daha büyük/derin ağ — obs genişleyince hidden=256 yetersiz kalabilir, 512'ye çıkılır veya 3. katman eklenir
-
 ---
 
 ## Yeni Özellik: Çoklu Ajan Yarışı (Multi-Agent Racing)
